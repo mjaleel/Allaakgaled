@@ -2,44 +2,37 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-st.set_page_config(page_title="دمج أسماء من ملفات Excel", layout="centered")
+st.set_page_config(page_title="دمج بيانات من ملفات Excel", layout="centered")
 
-st.title("📑 دمج أسماء من عدة ملفات Excel")
+st.title("📑 دمج بيانات من عدة ملفات Excel")
 
-st.write("قم برفع جميع الملفات (كل ملف يحتوي أسماء في عمود واحد) وسيتم دمجها في ملف Excel واحد.")
+st.write("قم برفع جميع الملفات (كل ملف يحتوي صف كامل من البيانات) وسيتم دمجها في ملف Excel واحد.")
 
 # رفع الملفات
 uploaded_files = st.file_uploader("اختر ملفات Excel", type=["xls", "xlsx"], accept_multiple_files=True)
 
 if uploaded_files:
-    all_names = []
+    all_data = []
 
     for file in uploaded_files:
         try:
-            # نجرب نقرأ الملف مع رؤوس أعمدة
+            # نقرأ الملف كامل (الملف فيه صفوف وأعمدة)
             df = pd.read_excel(file)
 
-            if "الاسم" in df.columns:  
-                # إذا عنده عمود اسمه 'الاسم'
-                names = df["الاسم"].dropna().astype(str).tolist()
+            # نتأكد من وجود بيانات
+            if not df.empty:
+                all_data.append(df)
             else:
-                # إذا ماكو عمود 'الاسم' نجرب نقرأ العمود الأول
-                # بعض الملفات قد تكون بدون header
-                try:
-                    df_noheader = pd.read_excel(file, header=None)
-                    names = df_noheader.iloc[:, 0].dropna().astype(str).tolist()
-                except:
-                    names = df[df.columns[0]].dropna().astype(str).tolist()
-
-            all_names.extend(names)
+                st.warning(f"⚠️ الملف {file.name} فارغ.")
 
         except Exception as e:
             st.error(f"⚠️ خطأ في قراءة الملف {file.name}: {e}")
 
-    if all_names:
-        result_df = pd.DataFrame({"الاسم": all_names})
+    if all_data:
+        # ندمج كل الداتا فريمات
+        result_df = pd.concat(all_data, ignore_index=True)
 
-        st.subheader("📋 الأسماء المدمجة")
+        st.subheader("📋 البيانات المدمجة")
         st.dataframe(result_df)
 
         # تجهيز الملف للتحميل
@@ -48,8 +41,8 @@ if uploaded_files:
         output.seek(0)
 
         st.download_button(
-            label="📥 تحميل ملف الأسماء المدمجة",
+            label="📥 تحميل ملف البيانات المدمجة",
             data=output,
-            file_name="merged_names.xlsx",
+            file_name="merged_data.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
